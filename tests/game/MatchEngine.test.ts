@@ -47,6 +47,15 @@ describe('MatchState & Roster Enforcement', () => {
     expect(state.players['blue_1'].controller).toBe('AI'); // GK is AI
   });
 
+  it('should initialize the 11th body on the pitch (Match Referee for Project Eleven)', () => {
+    const state = MatchStateManager.createInitialState('test_match', []);
+    expect(state.referee).toBeDefined();
+    expect(state.referee.position).toBeDefined();
+    // Exactly 10 players + 1 referee = 11 bodies
+    const totalBodies = Object.keys(state.players).length + 1;
+    expect(totalBodies).toBe(11);
+  });
+
   it('should detect goal when ball crosses valid goal line', () => {
     // Ball past Red Goal (+25.2m, within goal width)
     const redGoalScored = PhysicsWorld.checkGoal({

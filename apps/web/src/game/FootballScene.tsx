@@ -9,6 +9,7 @@ import { Lighting } from './Lighting';
 import { Stadium } from './Stadium';
 import { PlayerModel } from './PlayerModel';
 import { Ball } from './Ball';
+import { RefereeModel } from './RefereeModel';
 import { FollowCamera } from './FollowCamera';
 
 export const FootballScene: React.FC = () => {
@@ -67,6 +68,13 @@ export const FootballScene: React.FC = () => {
 
         {/* Football */}
         <Ball position={ballData.position} velocity={ballData.velocity} />
+
+        {/* The 11th Body in Project Eleven: Match Referee */}
+        <RefereeModel
+          position={currentSnapshot?.referee?.position}
+          velocity={currentSnapshot?.referee?.velocity}
+          facing={currentSnapshot?.referee?.facing}
+        />
 
         {/* Smooth Follow Camera */}
         <FollowCamera

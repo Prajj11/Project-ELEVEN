@@ -90,6 +90,11 @@ export interface MatchState {
   teams: Record<TeamId, TeamState>;
   kickoffTeam: TeamId;
   lastEventTimestamp: number;
+  referee: {
+    position: Vec3;
+    velocity: Vec3;
+    facing: Vec3;
+  };
 }
 
 export interface MatchSnapshot {
@@ -106,6 +111,11 @@ export interface MatchSnapshot {
     position: Vec3;
     velocity: Vec3;
     ownerId: string | null;
+  };
+  referee: {
+    position: Vec3;
+    velocity: Vec3;
+    facing: Vec3;
   };
   players: Array<{
     id: string;

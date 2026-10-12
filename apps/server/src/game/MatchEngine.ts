@@ -189,7 +189,10 @@ export class MatchEngine {
       });
     });
 
-    // 8. Match Clock, Phases & Boundaries
+    // 8. Update Match Referee (The 11th body on the pitch!)
+    this.updateReferee(dt);
+
+    // 9. Match Clock, Phases & Boundaries
     MatchRules.updateClockAndPhases(this.state, dt, () => {
       this.finishMatch();
     });
@@ -289,6 +292,48 @@ export class MatchEngine {
       // Turf Friction
       ball.velocity.x *= BALL_PHYSICS.TURF_FRICTION;
       ball.velocity.z *= BALL_PHYSICS.TURF_FRICTION;
+    }
+  }
+
+  private updateReferee(dt: number) {
+    const ball = this.state.ball;
+    const ref = this.state.referee;
+
+    // The referee stays on a viewing flank (~5m to the side of the play)
+    // and keeps an angle with the ball without obstructing goals or passes.
+    let targetX = ball.position.x > 0 ? ball.position.x - 6.0 : ball.position.x + 6.0;
+    targetX = Math.max(-12, Math.min(12, targetX));
+
+    // Stays slightly behind ball progression
+    let targetZ = ball.position.z * 0.7;
+    targetZ = Math.max(-18, Math.min(18, targetZ));
+
+    const dx = targetX - ref.position.x;
+    const dz = targetZ - ref.position.z;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist > 0.4) {
+      const dirX = dx / dist;
+      const dirZ = dz / dist;
+      const speed = Math.min(4.8, dist * 1.5);
+
+      ref.velocity.x = dirX * speed;
+      ref.velocity.z = dirZ * speed;
+
+      ref.position.x += ref.velocity.x * dt;
+      ref.position.z += ref.velocity.z * dt;
+    } else {
+      ref.velocity.x = 0;
+      ref.velocity.z = 0;
+    }
+
+    // Always faces towards the football to referee the match
+    const fdx = ball.position.x - ref.position.x;
+    const fdz = ball.position.z - ref.position.z;
+    const fdist = Math.hypot(fdx, fdz);
+    if (fdist > 0.1) {
+      ref.facing.x = fdx / fdist;
+      ref.facing.z = fdz / fdist;
     }
   }
 

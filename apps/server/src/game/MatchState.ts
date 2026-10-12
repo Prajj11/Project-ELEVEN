@@ -143,6 +143,11 @@ export class MatchStateManager {
       },
       kickoffTeam: 'blue',
       lastEventTimestamp: Date.now(),
+      referee: {
+        position: { x: 4.5, y: 0, z: 0 },
+        velocity: { x: 0, y: 0, z: 0 },
+        facing: { x: -1, y: 0, z: 0 },
+      },
     };
   }
 
@@ -161,6 +166,11 @@ export class MatchStateManager {
         position: { ...state.ball.position },
         velocity: { ...state.ball.velocity },
         ownerId: state.ball.ownerId,
+      },
+      referee: {
+        position: { ...state.referee.position },
+        velocity: { ...state.referee.velocity },
+        facing: { ...state.referee.facing },
       },
       players: Object.values(state.players).map((p) => ({
         id: p.id,
