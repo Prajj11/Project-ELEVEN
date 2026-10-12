@@ -3,6 +3,8 @@ import cors from 'cors';
 import express, { Request, Response } from 'express';
 import { Server } from 'socket.io';
 import { env } from './config/env';
+import { RoomManager } from './rooms/RoomManager';
+import { registerSocketHandlers } from './networking/SocketHandlers';
 
 const app = express();
 const server = http.createServer(app);
@@ -40,13 +42,9 @@ const io = new Server(server, {
   pingTimeout: 5000,
 });
 
-io.on('connection', (socket) => {
-  console.log(`[Socket] Client connected: ${socket.id}`);
-
-  socket.on('disconnect', (reason) => {
-    console.log(`[Socket] Client disconnected: ${socket.id} (${reason})`);
-  });
-});
+// Initialize Room Manager and Register Socket Event Handlers
+const roomManager = new RoomManager(io);
+registerSocketHandlers(io, roomManager);
 
 const PORT = env.PORT;
 server.listen(PORT, () => {
