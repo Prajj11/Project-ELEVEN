@@ -20,14 +20,29 @@ export const Pitch: React.FC = () => {
       {/* Grass Turf Plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[WIDTH + 8, LENGTH + 8]} />
-        <meshStandardMaterial color="#166534" roughness={0.8} />
+        <meshStandardMaterial color="#244b30" roughness={1} />
       </mesh>
 
       {/* Outer Pitch Border Turf */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]} receiveShadow>
         <planeGeometry args={[WIDTH, LENGTH]} />
-        <meshStandardMaterial color="#15803d" roughness={0.65} />
+        <meshStandardMaterial color="#376c3e" roughness={1} />
       </mesh>
+
+      {/* Alternating mowing directions; painted lines stay above the turf. */}
+      {Array.from({ length: 10 }, (_, i) => (
+        <mesh key={i} position={[0, .006, -HALF_LENGTH + (i + .5) * LENGTH / 10]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[WIDTH, LENGTH / 10]} />
+          <meshStandardMaterial color={i % 2 === 0 ? '#3b7044' : '#32633c'} roughness={1} />
+        </mesh>
+      ))}
+      {[-1, 1].map(side => <mesh key={side} position={[0, lineY, side * PITCH_CONSTANTS.PENALTY_SPOT_DISTANCE]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[.14, 20]} /><meshBasicMaterial color="#f2f2e6" />
+      </mesh>)}
+      {[-1, 1].flatMap(x => [-1, 1].map(z => <group key={`${x}:${z}`} position={[x * HALF_WIDTH, 0, z * HALF_LENGTH]}>
+        <mesh position={[0, .65, 0]} castShadow><cylinderGeometry args={[.025, .025, 1.3, 8]} /><meshStandardMaterial color="#f1eddf" /></mesh>
+        <mesh position={[.16, 1.13, 0]}><planeGeometry args={[.32, .25]} /><meshStandardMaterial color="#f5cd60" side={2} /></mesh>
+      </group>))}
 
       {/* Boundary Lines */}
       {/* Side Lines (Touchlines) */}

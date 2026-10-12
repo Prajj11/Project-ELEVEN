@@ -17,6 +17,7 @@ export class GoalDetection {
     // Increment score
     state.teams[scoringTeam].score += 1;
     state.phase = 'GOAL_PAUSE';
+    state.kickoffTeam = scoredOnTeam;
 
     const desc = `${scoringTeam.toUpperCase()} TEAM SCORED! (${state.teams.blue.score} - ${state.teams.red.score})`;
     onGoalScored(scoringTeam, desc);

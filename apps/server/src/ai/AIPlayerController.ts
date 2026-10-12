@@ -10,6 +10,7 @@ import { PassingSystem } from '../game/PassingSystem';
 import { ShootingSystem } from '../game/ShootingSystem';
 import { TacklingSystem } from '../game/TacklingSystem';
 import { PhysicsWorld } from '../game/PhysicsWorld';
+import { movementSpeed } from '../game/MovementSystem';
 
 export class AIPlayerController {
   public static update(state: MatchState, dt: number) {
@@ -56,6 +57,7 @@ export class AIPlayerController {
         // Within shooting range (< 16m)? Shoot!
         if (distToGoal < 16.0 && Math.abs(player.position.x) < 8.0) {
           ShootingSystem.executeShot(state, player.id, 0.85);
+          this.rest(player, dt);
           continue;
         }
 
@@ -77,7 +79,7 @@ export class AIPlayerController {
         if (underPressure) {
           // Look for safe pass to teammate
           const passed = PassingSystem.executePass(state, player.id);
-          if (passed) continue;
+          if (passed) { this.rest(player, dt); continue; }
         }
 
         // Dribble forward towards opponent goal with width variation
@@ -108,6 +110,7 @@ export class AIPlayerController {
         const owner = state.players[state.ball.ownerId];
         if (owner && owner.teamId !== player.teamId) {
           TacklingSystem.executeTackle(state, player.id);
+          this.rest(player, dt);
           continue;
         }
       }
@@ -243,15 +246,14 @@ export class AIPlayerController {
     const dist = Math.hypot(dx, dz);
 
     if (dist < 0.25) {
-      player.velocity.x = 0;
-      player.velocity.z = 0;
+      this.rest(player, dt);
       return;
     }
 
     const dirX = dx / dist;
     const dirZ = dz / dist;
 
-    const speed = sprint ? PLAYER_PHYSICS.SPRINT_SPEED : PLAYER_PHYSICS.BASE_SPEED;
+    const speed = movementSpeed(player, true, sprint, dt);
 
     player.velocity.x = dirX * speed;
     player.velocity.z = dirZ * speed;
@@ -263,6 +265,12 @@ export class AIPlayerController {
     player.facing.z = dirZ;
 
     player.position = PhysicsWorld.clampPlayerPosition(player.position);
+  }
+
+  private static rest(player: PlayerState, dt: number) {
+    player.velocity.x = 0;
+    player.velocity.z = 0;
+    movementSpeed(player, false, false, dt);
   }
 
   private static getHomeZ(player: PlayerState, strategy: string): number {

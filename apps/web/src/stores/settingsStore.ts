@@ -9,6 +9,8 @@ interface SettingsState {
   masterVolume: number;
   sfxVolume: number;
   showMinimap: boolean;
+  showBallTracker: boolean;
+  toggleBallTracker: () => void;
   showTacticalPanel: boolean;
   setGraphicsQuality: (quality: GraphicsQuality) => void;
   setCameraMode: (mode: CameraMode) => void;
@@ -24,6 +26,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   masterVolume: 80,
   sfxVolume: 80,
   showMinimap: true,
+  showBallTracker: true,
+  toggleBallTracker: () => set((state) => ({ showBallTracker: !state.showBallTracker })),
   showTacticalPanel: true,
   setGraphicsQuality: (graphicsQuality) => set({ graphicsQuality }),
   setCameraMode: (cameraMode) => set({ cameraMode }),

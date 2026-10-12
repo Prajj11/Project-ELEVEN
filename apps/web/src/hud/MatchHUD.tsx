@@ -1,247 +1,78 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Pause, Play } from 'lucide-react';
+import { Camera, LogOut, Pause, Play, Settings2, X } from 'lucide-react';
 import { useMatchStore } from '../stores/matchStore';
 import { useLobbyStore } from '../stores/lobbyStore';
+import { useInputStore } from '../stores/inputStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { socketClient } from '../network/socketClient';
 import { Scoreboard } from './Scoreboard';
 import { TacticalPanel } from './TacticalPanel';
-import { ConnectionIndicator } from '../components/ConnectionIndicator';
-
-export const MatchHUD: React.FC = () => {
-  const currentSnapshot = useMatchStore((s) => s.currentSnapshot);
-  const assignedPlayerId = useMatchStore((s) => s.assignedPlayerId);
-  const goalOverlayText = useMatchStore((s) => s.goalOverlayText);
-
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
-
-  const controlledPlayer = currentSnapshot?.players.find(
-    (p) => p.id === assignedPlayerId
-  );
-
-  const stamina = controlledPlayer?.stamina ?? 100;
-  const role = controlledPlayer?.role ?? 'FORWARD';
-  const hasPossession = controlledPlayer?.hasPossession ?? false;
-  const isPaused = currentSnapshot?.phase === 'PAUSED';
-
-  // Listen to Escape key for exit modal, and P key for Pause/Resume
+import { Minimap } from './Minimap';
+import { Button } from '../components/Button';
+import { GameDialog } from '../components/GameDialog';
+import { ControlGuide } from '../components/GameShell';
+export const MatchHUD = () => {
+  const shotCharge = useInputStore(s => s.shotCharge);
+  const playerName = useLobbyStore(s => s.playerName);
+  const snapshot = useMatchStore(s => s.currentSnapshot);
+  const assigned = useMatchStore(s => s.assignedPlayerId);
+  const goal = useMatchStore(s => s.goalOverlayText);
+  const { cameraMode, setCameraMode, showMinimap, toggleMinimap, showBallTracker, toggleBallTracker } = useSettingsStore();
+  const [menu, setMenu] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
+  const closeMenu = () => { setMenu(false); setConfirmExit(false); };
+  const player = snapshot?.players.find(p => p.id === assigned);
+  const paused = snapshot?.phase === 'PAUSED';
+  const stamina = Math.max(0, Math.min(100, player?.stamina ?? 100));
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Escape') {
-        setShowExitConfirm((prev) => !prev);
-      } else if (e.code === 'KeyP') {
-        socketClient.togglePause();
-      }
+    const handle = (e: KeyboardEvent) => {
+      if (e.repeat || document.querySelector('dialog[open]')) return;
+      if (e.code === 'Escape') { e.preventDefault(); setMenu(true); }
+      if (e.code === 'KeyP') socketClient.togglePause();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handle); return () => window.removeEventListener('keydown', handle);
   }, []);
-
-  const handleExitMatch = () => {
-    socketClient.leaveRoom();
-    useMatchStore.getState().resetMatch();
-    useLobbyStore.getState().reset();
-  };
-
-  const handleTogglePause = () => {
-    socketClient.togglePause();
-  };
-
-  return (
-    <>
-      <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 select-none z-10">
-        {/* Top Header Row */}
-        <div className="flex items-start justify-between w-full pointer-events-auto">
-          <div className="flex items-center gap-3">
-            <ConnectionIndicator />
-            <div className="px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-400 font-mono">
-              ROLE: <span className="text-emerald-400 font-bold">{role}</span>
-            </div>
-
-            {/* Pause / Resume Button */}
-            <button
-              onClick={handleTogglePause}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-150 active:scale-95 shadow-md ${
-                isPaused
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-emerald-950/40'
-                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-slate-700'
-              }`}
-            >
-              {isPaused ? <Play className="w-3.5 h-3.5 fill-white" /> : <Pause className="w-3.5 h-3.5" />}
-              <span>{isPaused ? 'Resume Match' : 'Pause'}</span>
-            </button>
-
-            {/* Exit Match Button */}
-            <button
-              onClick={() => setShowExitConfirm(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-xs text-rose-300 font-semibold transition-all duration-150 active:scale-95 shadow-md shadow-rose-950/40"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Exit Match</span>
-            </button>
-          </div>
-
-          {/* Center Scoreboard */}
-          <Scoreboard />
-
-          {/* Tactical Observability Drawer */}
-          <TacticalPanel />
-        </div>
-
-        {/* Big Match Paused Overlay Banner */}
-        {isPaused && (
-          <div className="self-center my-auto pointer-events-auto animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-10 py-6 rounded-3xl bg-slate-900/95 border-2 border-amber-500 shadow-2xl shadow-amber-500/20 backdrop-blur-xl text-center space-y-4">
-              <div className="flex items-center justify-center gap-2 text-amber-400">
-                <Pause className="w-8 h-8" />
-                <h1 className="text-3xl font-black tracking-widest uppercase">
-                  MATCH PAUSED
-                </h1>
-              </div>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                Simulation clock and player physics are frozen. Click resume to continue playing.
-              </p>
-              <button
-                onClick={handleTogglePause}
-                className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-emerald-950/50 border border-emerald-400 flex items-center gap-2 mx-auto transition-transform active:scale-95"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>RESUME MATCH</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Goal Celebration Overlay */}
-        {goalOverlayText && !isPaused && (
-          <div className="self-center my-auto animate-bounce pointer-events-none">
-            <div className="px-10 py-5 rounded-3xl bg-emerald-600/95 border-2 border-emerald-400 shadow-2xl shadow-emerald-500/50 backdrop-blur-lg text-center">
-              <h1 className="text-4xl font-black text-white tracking-widest uppercase drop-shadow-md">
-                ⚽ GOAL! ⚽
-              </h1>
-              <p className="text-lg font-bold text-emerald-100 mt-1">
-                {goalOverlayText}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Bottom Controls & Stamina HUD */}
-        <div className="flex items-end justify-between w-full pointer-events-auto">
-          {/* Left: Player Stamina & Ball Status */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl backdrop-blur-md w-72 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-300">Stamina</span>
-              <span className="font-mono font-bold text-emerald-400">
-                {Math.round(stamina)}%
-              </span>
-            </div>
-            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-150 ${
-                  stamina > 30 ? 'bg-emerald-500' : 'bg-amber-500'
-                }`}
-                style={{ width: `${stamina}%` }}
-              />
-            </div>
-
-            <div className="pt-1 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Possession:</span>
-              {hasPossession ? (
-                <span className="font-bold text-amber-400 animate-pulse">
-                  YOU HAVE THE BALL
-                </span>
-              ) : (
-                <span className="text-slate-500">Contested</span>
-              )}
-            </div>
-          </div>
-
-          {/* Center: Quick Action Key Bindings */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl px-6 py-3 shadow-2xl backdrop-blur-md flex items-center gap-4 text-xs font-semibold">
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-emerald-400">
-                WASD
-              </kbd>
-              <span>Move</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-emerald-400">
-                SHIFT
-              </kbd>
-              <span>Sprint</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-sky-400">
-                E
-              </kbd>
-              <span>Pass</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-emerald-400">
-                SPACE
-              </kbd>
-              <span>Shoot</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-rose-400">
-                Q
-              </kbd>
-              <span>Tackle</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-amber-400">
-                P
-              </kbd>
-              <span>Pause</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400">
-                ESC
-              </kbd>
-              <span>Exit</span>
-            </div>
-          </div>
-
-          {/* Right: Camera Notice */}
-          <div className="text-right text-xs text-slate-400 bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800 backdrop-blur-md">
-            <span className="text-slate-200 font-semibold">3D Follow Camera</span>
-            <p className="text-[10px] text-slate-500">Auto-tracks action</p>
-          </div>
-        </div>
+  const exit = () => { socketClient.leaveRoom(); useMatchStore.getState().resetMatch(); useLobbyStore.getState().reset(); };
+  return <>
+    <div className="match-hud">
+      <div className="hud-top"><div className="hud-brand"><span className="brand-mark">11</span><span>THE ARENA<small>5V5 FOOTBALL</small></span></div><Scoreboard /><div className="hud-actions"><button aria-label={`Switch to ${cameraMode === 'follow' ? 'tactical' : 'follow'} camera`} title="Switch camera (C)" onClick={() => setCameraMode(cameraMode === 'follow' ? 'tactical' : 'follow')}><Camera size={18} /></button><button aria-label={paused ? 'Resume match' : 'Pause match'} onClick={() => socketClient.togglePause()}>{paused ? <Play size={18} /> : <Pause size={18} />}</button><button aria-label="Open match menu" onClick={() => setMenu(true)}><Settings2 size={18} /></button></div></div>
+      <div className="hud-coach"><TacticalPanel /></div>
+      {paused && <div className="match-banner"><p className="eyebrow">TAKE A BREATHER</p><h1>TIME OUT.</h1><p>Ready when you are.</p><Button onClick={() => socketClient.togglePause()}><Play size={16} /> BACK TO THE MATCH</Button></div>}
+      {goal && !paused && <div className="goal-banner" role="status"><span>WHAT A FINISH.</span><h1>GOAL!</h1><p>{goal}</p></div>}
+      {snapshot?.phase === 'KICKOFF' && <div className="kickoff-banner">GET READY. <strong>MAKE IT COUNT.</strong></div>}
+      {shotCharge !== null && <div className="shot-meter" role="meter" aria-label="Shot power" aria-valuemin={40} aria-valuemax={100} aria-valuenow={Math.round(40 + shotCharge * 60)}>
+        <div><span>SHOT POWER</span><strong>{Math.round(40 + shotCharge * 60)}%</strong></div>
+        <div className="shot-meter-track"><i style={{ width: `${40 + shotCharge * 60}%` }} /></div>
+        <small>RELEASE SPACE TO SHOOT</small>
+      </div>}
+      <div className="hud-bottom"><div className="player-status"><div className="player-status-title"><span className="player-number">{String(player?.number ?? 2).padStart(2, '0')}</span><div><small>YOU / {player?.role || 'PLAYER'}</small><strong>{player ? playerName : 'Taking the pitch…'}</strong></div><i className={player?.hasPossession ? 'on-ball' : ''} /></div><div className="stamina-label"><span>SPRINT ENERGY</span><b>{Math.round(stamina)}%</b></div><div className="stamina-track"><i style={{ width: `${stamina}%`, background: stamina < 30 ? '#ffbd69' : undefined }} /></div><p>{player?.hasPossession ? 'ON THE BALL · MAKE YOUR MOVE' : 'FIND SPACE · SUPPORT YOUR SQUAD'}</p></div>
+        <div className="hud-controls">{[['WASD', 'MOVE'], ['SHIFT', 'SPRINT'], ['E', 'PASS'], ['SPACE', 'HOLD / SHOOT'], ['Q', 'TACKLE']].map(([key, label]) => <span key={key}><kbd>{key}</kbd>{label}</span>)}<span><kbd>C</kbd>CAMERA</span></div>
+        {showMinimap && <Minimap />}
       </div>
-
-      {/* Exit Confirmation Modal */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md pointer-events-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full mx-4 shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="w-12 h-12 rounded-2xl bg-rose-950/80 border border-rose-800/80 text-rose-400 flex items-center justify-center mx-auto">
-              <LogOut className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-lg font-black text-slate-100 tracking-wide">
-                Exit Match?
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Are you sure you want to leave the active match? An AI bot will take your place.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={() => setShowExitConfirm(false)}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
-              >
-                Stay in Match
-              </button>
-              <button
-                onClick={handleExitMatch}
-                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-950/50 border border-rose-500/40 transition-colors"
-              >
-                Yes, Exit
-              </button>
-            </div>
-          </div>
+    </div>
+    {menu && <GameDialog title={confirmExit ? 'Leave match?' : 'Match menu'} onClose={closeMenu}>
+      <div className="dialog-heading"><span className="eyebrow">MATCH MENU</span><button aria-label="Close match menu" onClick={closeMenu}><X size={20} /></button></div>
+      {confirmExit ? <>
+        <h2>LEAVE THE PITCH?</h2>
+        <p className="muted">You’ll return to the main menu and cannot rejoin this match.</p>
+        <div className="exit-confirm-actions">
+          <Button fullWidth onClick={() => setConfirmExit(false)}>STAY IN MATCH</Button>
+          <Button variant="danger" fullWidth onClick={exit}><LogOut size={16} /> LEAVE MATCH</Button>
         </div>
-      )}
-    </>
-  );
+      </> : <>
+        <h2>STAY IN THE GAME.</h2>
+        <p className="muted">{paused ? 'The match is paused.' : 'The match continues while this menu is open.'}</p>
+        <ControlGuide />
+        <div className="menu-settings">
+          <label htmlFor="camera-mode">CAMERA</label>
+          <select id="camera-mode" value={cameraMode} onChange={e => setCameraMode(e.target.value as 'follow' | 'tactical')}><option value="follow">Follow the action</option><option value="tactical">Tactical overview</option></select>
+          <label className="menu-checkbox"><input type="checkbox" checked={showBallTracker} onChange={toggleBallTracker} /> Show ball tracker</label>
+          <label className="menu-checkbox"><input type="checkbox" checked={showMinimap} onChange={toggleMinimap} /> Show live pitch map</label>
+        </div>
+        <Button fullWidth onClick={() => { if (paused) socketClient.togglePause(); closeMenu(); }}>{paused ? 'RESUME MATCH' : 'BACK TO MATCH'}<Play size={16} /></Button>
+        {!paused && <Button variant="secondary" fullWidth onClick={() => { socketClient.togglePause(); closeMenu(); }}><Pause size={16} /> PAUSE MATCH</Button>}
+        <div className="menu-leave"><Button variant="outline" fullWidth onClick={() => setConfirmExit(true)}><LogOut size={16} /> LEAVE MATCH</Button></div>
+      </>}
+    </GameDialog>}
+  </>;
 };

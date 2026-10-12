@@ -33,6 +33,7 @@ export class MatchRoom {
     // Default team balance
     const blueCount = this.players.filter((p) => p.teamId === 'blue').length;
     const redCount = this.players.filter((p) => p.teamId === 'red').length;
+    if (blueCount >= ROSTER_LIMITS.MAX_HUMANS_PER_TEAM && redCount >= ROSTER_LIMITS.MAX_HUMANS_PER_TEAM) return false;
     const teamId: TeamId = blueCount <= redCount ? 'blue' : 'red';
 
     const isHost = this.players.length === 0;
@@ -50,6 +51,8 @@ export class MatchRoom {
   }
 
   public removePlayer(socketId: string) {
+    const leaving = this.players.find(p => p.socketId === socketId);
+    if (leaving?.assignedPlayerId) this.engine?.clearInput(leaving.assignedPlayerId);
     this.players = this.players.filter((p) => p.socketId !== socketId);
     if (this.players.length > 0 && !this.players.some((p) => p.isHost)) {
       this.players[0].isHost = true;

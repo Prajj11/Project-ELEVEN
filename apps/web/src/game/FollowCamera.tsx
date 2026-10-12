@@ -31,23 +31,26 @@ export const FollowCamera: React.FC<FollowCameraProps> = ({
     const lookX = targetX * 0.7 + ballX * 0.3;
     const lookZ = targetZ * 0.7 + ballZ * 0.3;
 
-    currentTarget.current.lerp(new THREE.Vector3(lookX, 0.5, lookZ), delta * 5);
+    currentTarget.current.lerp(new THREE.Vector3(lookX, 0.5, lookZ), 1 - Math.exp(-5 * delta));
 
     if (cameraMode === 'tactical') {
       // High tactical overview
       const desiredPos = new THREE.Vector3(0, 26, teamSide === 'blue' ? 18 : -18);
-      camera.position.lerp(desiredPos, delta * 4);
+      camera.position.lerp(desiredPos, 1 - Math.exp(-4 * delta));
       camera.lookAt(0, 0, 0);
     } else {
       // Dynamic follow broadcast camera
-      const zOffset = teamSide === 'blue' ? 15 : -15;
+      // Pull back as play stretches so long passes stay easier to follow.
+      const separation = Math.hypot(ballX - targetX, ballZ - targetZ);
+      const pullback = Math.min(6, separation * .22);
+      const zOffset = (teamSide === 'blue' ? 1 : -1) * (15 + pullback * .6);
       const desiredX = currentTarget.current.x * 0.5;
-      const desiredY = 13.5;
+      const desiredY = 13.5 + pullback;
       const desiredZ = currentTarget.current.z + zOffset;
 
       camera.position.lerp(
         new THREE.Vector3(desiredX, desiredY, desiredZ),
-        delta * 6
+        1 - Math.exp(-6 * delta)
       );
       camera.lookAt(currentTarget.current);
     }

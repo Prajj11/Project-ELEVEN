@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PITCH_CONSTANTS } from '@project-eleven/shared';
 import { useMatchStore } from '../stores/matchStore';
@@ -11,14 +11,21 @@ import { PlayerModel } from './PlayerModel';
 import { Ball } from './Ball';
 import { RefereeModel } from './RefereeModel';
 import { FollowCamera } from './FollowCamera';
+import { BallTracker } from './BallTracker';
+import { useSettingsStore } from '../stores/settingsStore';
+
+// Input needs the Canvas camera to keep movement aligned with the screen.
+const MatchControls = () => {
+  useKeyboardControls(true);
+  return null;
+};
 
 export const FootballScene: React.FC = () => {
+  const marker = useRef<HTMLDivElement>(null);
+  const showBallTracker = useSettingsStore(s => s.showBallTracker);
   const currentSnapshot = useMatchStore((s) => s.currentSnapshot);
   const assignedPlayerId = useMatchStore((s) => s.assignedPlayerId);
   const assignedTeamId = useMatchStore((s) => s.assignedTeamId);
-
-  // Enable keyboard controls during match
-  useKeyboardControls(true);
 
   // Default ball position if snapshot is not yet received
   const ballData = currentSnapshot?.ball || {
@@ -40,6 +47,7 @@ export const FootballScene: React.FC = () => {
         gl={{ antialias: true }}
       >
         <color attach="background" args={['#030712']} />
+        <MatchControls />
 
         {/* Scene Lighting */}
         <Lighting />
@@ -67,7 +75,7 @@ export const FootballScene: React.FC = () => {
         ))}
 
         {/* Football */}
-        <Ball position={ballData.position} velocity={ballData.velocity} />
+        <Ball position={ballData.position} velocity={ballData.velocity} tracked={showBallTracker} />
 
         {/* The 11th Body in Project Eleven: Match Referee */}
         <RefereeModel
@@ -82,7 +90,11 @@ export const FootballScene: React.FC = () => {
           ballPosition={ballData.position}
           teamSide={assignedTeamId || 'blue'}
         />
+        <BallTracker marker={marker} />
       </Canvas>
+      <div className="ball-tracker-layer" aria-hidden="true">
+        <div ref={marker} className="ball-tracker" hidden><i /><span>BALL</span></div>
+      </div>
     </div>
   );
 };

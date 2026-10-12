@@ -21,7 +21,7 @@ class SocketClient {
   private socket: AppSocket | null = null;
 
   public connect(): AppSocket {
-    if (this.socket && this.socket.connected) {
+    if (this.socket) {
       return this.socket;
     }
 
@@ -48,6 +48,10 @@ class SocketClient {
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected from server:', reason);
       useLobbyStore.getState().setIsConnecting(true);
+      const wasInRoom = !!useLobbyStore.getState().currentRoom;
+      useLobbyStore.getState().reset();
+      useMatchStore.getState().resetMatch();
+      if (wasInRoom) useLobbyStore.getState().setErrorMessage('Connection lost. Your match could not be restored. Reconnect, then create or join a new lobby.');
     });
 
     this.socket.on(SOCKET_EVENTS.ROOM_STATE, (roomState: RoomState) => {
@@ -96,10 +100,13 @@ class SocketClient {
   ): Promise<{ success: boolean; roomId?: string; error?: string }> {
     return new Promise((resolve) => {
       const socket = this.connect();
+      if (!socket.connected) { resolve({ success: false, error: 'The arena is reconnecting. Please try again shortly.' }); return; }
+      const timeout = setTimeout(() => resolve({ success: false, error: 'The arena did not respond. Please try again.' }), 10000);
       socket.emit(
         SOCKET_EVENTS.ROOM_CREATE,
         { playerName, isSoloPractice },
         (res) => {
+          clearTimeout(timeout);
           resolve(res);
         }
       );
@@ -112,10 +119,13 @@ class SocketClient {
   ): Promise<{ success: boolean; roomId?: string; error?: string }> {
     return new Promise((resolve) => {
       const socket = this.connect();
+      if (!socket.connected) { resolve({ success: false, error: 'The arena is reconnecting. Please try again shortly.' }); return; }
+      const timeout = setTimeout(() => resolve({ success: false, error: 'The arena did not respond. Please try again.' }), 10000);
       socket.emit(
         SOCKET_EVENTS.ROOM_JOIN,
         { roomCode, playerName },
         (res) => {
+          clearTimeout(timeout);
           resolve(res);
         }
       );

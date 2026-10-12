@@ -8,11 +8,13 @@ import {
 import { PhysicsWorld } from './PhysicsWorld';
 
 export class MatchRules {
-  private static goalPauseTimer: number = 0;
+  private static goalPauseTimers = new WeakMap<MatchState, number>();
+  private static kickoffTimers = new WeakMap<MatchState, number>();
 
   public static resetToKickoff(state: MatchState, concedingTeam: TeamId) {
     state.phase = 'KICKOFF';
     state.kickoffTeam = concedingTeam;
+    this.kickoffTimers.set(state, 0);
 
     // Reset ball to center spot
     state.ball.position = { x: 0, y: BALL_PHYSICS.RADIUS, z: 0 };
@@ -71,18 +73,27 @@ export class MatchRules {
         state.ball.ownerId = null;
       }
     } else if (state.phase === 'GOAL_PAUSE') {
-      this.goalPauseTimer += dt;
-      if (this.goalPauseTimer >= SIMULATION_CONSTANTS.GOAL_PAUSE_SECONDS) {
-        this.goalPauseTimer = 0;
-        this.resetToKickoff(
-          state,
-          state.kickoffTeam === 'blue' ? 'red' : 'blue'
-        );
+      const elapsed = (this.goalPauseTimers.get(state) ?? 0) + dt;
+      this.goalPauseTimers.set(state, elapsed);
+      if (elapsed + 1e-9 >= SIMULATION_CONSTANTS.GOAL_PAUSE_SECONDS) {
+        this.goalPauseTimers.delete(state);
+        this.resetToKickoff(state, state.kickoffTeam);
       }
     } else if (state.phase === 'KICKOFF') {
-      // Transition from kickoff to playing as soon as someone touches the ball or passes
-      const ballMoved = Math.hypot(state.ball.velocity.x, state.ball.velocity.z) > 0.5;
-      if (ballMoved || state.ball.ownerId !== null) {
+      const elapsed = (this.kickoffTimers.get(state) ?? 0) + dt;
+      this.kickoffTimers.set(state, elapsed);
+      if (elapsed + 1e-9 >= 3) {
+        this.kickoffTimers.delete(state);
+        const taker = state.players[`${state.kickoffTeam}_5`];
+        if (taker) {
+          const forward = state.kickoffTeam === 'blue' ? 1 : -1;
+          taker.position = { x: 0, y: 0, z: -forward * BALL_PHYSICS.DRIBBLE_OFFSET_Z };
+          taker.facing = { x: 0, y: 0, z: forward };
+          for (const player of Object.values(state.players)) player.hasPossession = player.id === taker.id;
+          state.ball.ownerId = taker.id;
+          state.ball.lastTouchTeam = state.kickoffTeam;
+          state.possessionTeam = state.kickoffTeam;
+        }
         state.phase = 'PLAYING';
       }
     }

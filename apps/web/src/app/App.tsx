@@ -38,7 +38,7 @@ export const App: React.FC = () => {
     case 'MATCH':
       return <MatchPage />;
     case 'RESULTS':
-      return <ResultsPage onReturnToLobby={() => setCurrentView('LOBBY')} />;
+      return <ResultsPage onReturnToLobby={() => setCurrentView('LANDING')} />;
     case 'LOBBY':
       return <LobbyPage onLeaveLobby={() => setCurrentView('LANDING')} />;
     case 'LANDING':

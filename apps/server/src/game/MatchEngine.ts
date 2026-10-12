@@ -22,6 +22,7 @@ import { MatchRules } from './MatchRules';
 import { AIPlayerController } from '../ai/AIPlayerController';
 import { TacticalAgent } from '../ai/TacticalAgent';
 import { PhysicsWorld } from './PhysicsWorld';
+import { movementSpeed } from './MovementSystem';
 
 export class MatchEngine {
   private state: MatchState;
@@ -33,8 +34,9 @@ export class MatchEngine {
   private blueAgent = new TacticalAgent('blue');
   private redAgent = new TacticalAgent('red');
 
-  // Input queue
-  private pendingInputs: Map<string, PlayerInput> = new Map();
+  // Hold the latest input between network messages so all 60 simulation ticks move players.
+  private pendingInputs = new Map<string, { input: PlayerInput; receivedAt: number }>();
+  private static readonly INPUT_TIMEOUT_MS = 250;
 
   // Match Statistics
   private stats: { blue: TeamMatchStats; red: TeamMatchStats } = {
@@ -101,10 +103,17 @@ export class MatchEngine {
     this.isRunning = false;
     if (this.intervalId) clearInterval(this.intervalId);
     if (this.broadcastIntervalId) clearInterval(this.broadcastIntervalId);
+    this.pendingInputs.clear();
   }
 
   public queueInput(playerId: string, input: PlayerInput) {
-    this.pendingInputs.set(playerId, input);
+    this.pendingInputs.set(playerId, { input, receivedAt: Date.now() });
+  }
+
+  public clearInput(playerId: string) {
+    this.pendingInputs.delete(playerId);
+    const player = this.state.players[playerId];
+    if (player) { player.velocity.x = 0; player.velocity.z = 0; }
   }
 
   public handleAction(playerId: string, action: PlayerActionPayload) {
@@ -133,6 +142,7 @@ export class MatchEngine {
   }
 
   public togglePause(): boolean {
+    this.pendingInputs.clear();
     if (this.state.phase === 'PLAYING') {
       this.state.phase = 'PAUSED';
       this.onEvent({
@@ -158,6 +168,15 @@ export class MatchEngine {
 
     // If game is paused, skip physics and clock updates
     if (this.state.phase === 'PAUSED') {
+      return;
+    }
+    if (this.state.phase === 'KICKOFF' || this.state.phase === 'GOAL_PAUSE') {
+      this.pendingInputs.clear();
+      for (const player of Object.values(this.state.players)) {
+        player.velocity.x = 0;
+        player.velocity.z = 0;
+      }
+      MatchRules.updateClockAndPhases(this.state, dt, () => this.finishMatch());
       return;
     }
 
@@ -220,47 +239,39 @@ export class MatchEngine {
   }
 
   private processHumanInputs(dt: number) {
-    for (const [playerId, input] of this.pendingInputs.entries()) {
-      const player = this.state.players[playerId];
-      if (!player || player.controller !== 'HUMAN') continue;
+    const now = Date.now();
+    const active = this.state.phase === 'PLAYING' || this.state.phase === 'KICKOFF';
+    for (const player of Object.values(this.state.players)) {
+      if (player.controller !== 'HUMAN') continue;
+      if (!active) { this.clearInput(player.id); continue; }
+      const latest = this.pendingInputs.get(player.id);
+      const input = latest && now - latest.receivedAt <= MatchEngine.INPUT_TIMEOUT_MS ? latest.input : undefined;
+      if (!input) this.pendingInputs.delete(player.id);
 
       if (player.actionCooldown > 0) {
         player.actionCooldown -= 1;
       }
 
-      const speed =
-        input.sprint && player.stamina > PLAYER_PHYSICS.STAMINA_MIN_TO_SPRINT
-          ? PLAYER_PHYSICS.SPRINT_SPEED
-          : PLAYER_PHYSICS.BASE_SPEED;
-
-      // Drain / recover stamina
-      if (input.sprint && (input.movement.x !== 0 || input.movement.z !== 0)) {
-        player.stamina = Math.max(
-          0,
-          player.stamina - PLAYER_PHYSICS.STAMINA_DRAIN_PER_SEC * dt
-        );
-      } else {
-        player.stamina = Math.min(
-          PLAYER_PHYSICS.STAMINA_MAX,
-          player.stamina + PLAYER_PHYSICS.STAMINA_RECOVERY_PER_SEC * dt
-        );
-      }
-
-      player.velocity.x = input.movement.x * speed;
-      player.velocity.z = input.movement.z * speed;
+      let x = input?.movement.x ?? 0;
+      let z = input?.movement.z ?? 0;
+      const length = Math.hypot(x, z);
+      if (length > 1) { x /= length; z /= length; }
+      const moving = length > 0;
+      const speed = movementSpeed(player, moving, input?.sprint ?? false, dt);
+      player.velocity.x = x * speed;
+      player.velocity.z = z * speed;
 
       player.position.x += player.velocity.x * dt;
       player.position.z += player.velocity.z * dt;
 
-      if (input.movement.x !== 0 || input.movement.z !== 0) {
-        player.facing.x = input.movement.x;
-        player.facing.z = input.movement.z;
+      if (moving) {
+        player.facing.x = x;
+        player.facing.z = z;
       }
 
       // Clamp inside pitch bounds
       player.position = PhysicsWorld.clampPlayerPosition(player.position);
     }
-    this.pendingInputs.clear();
   }
 
   private updateBallPhysics(dt: number) {

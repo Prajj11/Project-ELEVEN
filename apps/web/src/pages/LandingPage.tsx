@@ -1,207 +1,64 @@
 import React, { useState } from 'react';
-import { Bot, Play, Sparkles, Trophy, Users, Zap } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Gamepad2, Users, Target, ChevronRight, Keyboard, Timer } from 'lucide-react';
 import { Button } from '../components/Button';
-import { ConnectionIndicator } from '../components/ConnectionIndicator';
+import { GameShell, ControlGuide } from '../components/GameShell';
+import { PlayerShowcase } from '../components/PlayerShowcase';
 import { socketClient } from '../network/socketClient';
 import { useLobbyStore } from '../stores/lobbyStore';
 
-interface LandingPageProps {
-  onEnterLobby: () => void;
-}
-
-export const LandingPage: React.FC<LandingPageProps> = ({ onEnterLobby }) => {
-  const playerName = useLobbyStore((s) => s.playerName);
-  const setPlayerName = useLobbyStore((s) => s.setPlayerName);
-  const roomCodeInput = useLobbyStore((s) => s.roomCodeInput);
-  const setRoomCodeInput = useLobbyStore((s) => s.setRoomCodeInput);
-  const errorMessage = useLobbyStore((s) => s.errorMessage);
-  const setErrorMessage = useLobbyStore((s) => s.setErrorMessage);
-
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleCreateRoom = async (isSolo: boolean = false) => {
-    if (!playerName.trim()) {
-      setErrorMessage('Please enter your player name');
-      return;
-    }
-    setIsLoading(true);
-    setErrorMessage(null);
+export const LandingPage: React.FC<{ onEnterLobby: () => void }> = ({ onEnterLobby }) => {
+  const { playerName, setPlayerName, roomCodeInput, setRoomCodeInput, errorMessage, setErrorMessage, isConnecting } = useLobbyStore();
+  const [mode, setMode] = useState<'solo' | 'multiplayer'>('solo');
+  const [tab, setTab] = useState<'play' | 'controls'>('play');
+  const [loading, setLoading] = useState(false);
+  const enter = async (join = false) => {
+    if (!playerName.trim()) { setErrorMessage('Choose a player name before you take the pitch.'); return; }
+    if (join && roomCodeInput.trim().length !== 6) { setErrorMessage('Enter the six-character code from your captain.'); return; }
+    setLoading(true); setErrorMessage(null);
     try {
-      const res = await socketClient.createRoom(playerName.trim(), isSolo);
-      if (res.success) {
-        onEnterLobby();
-      } else {
-        setErrorMessage(res.error || 'Failed to create room');
-      }
-    } catch {
-      setErrorMessage('Network connection error');
-    } finally {
-      setIsLoading(false);
-    }
+      const response = join ? await socketClient.joinRoom(roomCodeInput.trim().toUpperCase(), playerName.trim()) : await socketClient.createRoom(playerName.trim(), mode === 'solo');
+      if (response.success) onEnterLobby();
+      else setErrorMessage(response.error || 'Could not enter the arena. Try again.');
+    } catch { setErrorMessage('Connection lost. Please try again.'); }
+    finally { setLoading(false); }
   };
-
-  const handleJoinRoom = async () => {
-    if (!playerName.trim()) {
-      setErrorMessage('Please enter your player name');
-      return;
-    }
-    if (!roomCodeInput.trim() || roomCodeInput.trim().length !== 6) {
-      setErrorMessage('Room code must be 6 characters');
-      return;
-    }
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const res = await socketClient.joinRoom(
-        roomCodeInput.trim().toUpperCase(),
-        playerName.trim()
-      );
-      if (res.success) {
-        onEnterLobby();
-      } else {
-        setErrorMessage(res.error || 'Room not found or full');
-      }
-    } catch {
-      setErrorMessage('Network connection error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex flex-col justify-between p-6 sm:p-10 relative overflow-hidden select-none">
-      {/* Background Ambient Glows */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-sky-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Header */}
-      <header className="flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-sky-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <Trophy className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <span className="font-black text-xl tracking-wider text-slate-100 flex items-center gap-2">
-              PROJECT ELEVEN
-              <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Agentic 5v5
-              </span>
-            </span>
-            <p className="text-xs text-slate-400">3D Online Multiplayer Football Arena</p>
-          </div>
-        </div>
-
-        <ConnectionIndicator />
-      </header>
-
-      {/* Main Content Card */}
-      <main className="max-w-xl mx-auto w-full my-auto z-10 space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-50 tracking-tight leading-tight">
-            Play with Humans. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-emerald-400 to-teal-300">
-              Coached by Tactical AI.
-            </span>
-          </h1>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
-            Experience 5v5 real-time 3D association football with individual AI
-            teammates and independent tactical LLM strategy engines.
-          </p>
-        </div>
-
-        {/* Player Name Input */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-2xl backdrop-blur-xl space-y-5">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              Player Name
-            </label>
-            <input
-              type="text"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Enter your striker name..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 font-medium text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-            />
-          </div>
-
-          {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/60 text-xs text-rose-300">
-              {errorMessage}
+    <GameShell section="MAIN MENU" footer={<span><Keyboard size={14} /> KEYBOARD & MOUSE</span>}>
+      <nav className="menu-tabs" aria-label="Main menu">
+        <button aria-pressed={tab === 'play'} className={tab === 'play' ? 'active' : ''} onClick={() => setTab('play')}><Gamepad2 size={17} /> PLAY <span>01</span></button>
+        <button aria-pressed={tab === 'controls'} className={tab === 'controls' ? 'active' : ''} onClick={() => setTab('controls')}><Keyboard size={17} /> HOW TO PLAY <span>02</span></button>
+        <div className="nav-note">SMALL SIDES. <strong>BIG MOMENTS.</strong></div>
+      </nav>
+      <main className="home-main">
+        <section className="hero">
+          <div className="hero-grid" aria-hidden="true" />
+          <div className="hero-copy"><p className="eyebrow"><span /> WELCOME TO THE ARENA</p><h1>OWN THE<br /><em>PITCH.</em></h1><p className="hero-description">Five players. One team. Every touch counts.<br />Step up and make the next moment yours.</p><div className="hero-specs"><span><strong>5<span>v</span>5</strong> SMALL-SIDED FOOTBALL</span><span><strong>03:00</strong> ALL-OUT ACTION</span></div></div>
+          <PlayerShowcase />
+          <span className="hero-watermark" aria-hidden="true">ELEVEN</span>
+          <div className="hero-bottom"><span>THE ARENA IS YOURS</span><ArrowUpRight size={22} /></div>
+        </section>
+        <section className="play-panel">
+          {tab === 'play' ? <>
+            <div className="section-kicker"><span>01 / KICK OFF</span><Gamepad2 size={19} /></div>
+            <h2>YOUR GAME.<br />YOUR RULES.</h2>
+            <label className="input-label" htmlFor="player-name">PLAYER NAME</label>
+            <div className="player-input"><span>11</span><input id="player-name" maxLength={24} value={playerName} onChange={e => setPlayerName(e.target.value)} placeholder="Your player name" autoComplete="nickname" /></div>
+            <p className="input-label mode-label">CHOOSE YOUR MATCH</p>
+            <div className="mode-options" role="group" aria-label="Match mode">
+              <button disabled={loading} aria-pressed={mode === 'solo'} className={`mode-card ${mode === 'solo' ? 'selected' : ''}`} onClick={() => setMode('solo')}><Target /><span><strong>TRAINING GROUND</strong><small>Go solo. Take on the AI.</small></span><span className="radio-mark" /></button>
+              <button disabled={loading} aria-pressed={mode === 'multiplayer'} className={`mode-card ${mode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setMode('multiplayer')}><Users /><span><strong>PLAY WITH FRIENDS</strong><small>Your squad. Your private arena.</small></span><span className="radio-mark" /></button>
             </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              disabled={isLoading}
-              onClick={() => handleCreateRoom(true)}
-              className="flex items-center gap-2"
-            >
-              <Bot className="w-4 h-4" />
-              <span>Practice vs AI</span>
-            </Button>
-
-            <Button
-              variant="blue"
-              size="lg"
-              fullWidth
-              disabled={isLoading}
-              onClick={() => handleCreateRoom(false)}
-              className="flex items-center gap-2"
-            >
-              <Users className="w-4 h-4" />
-              <span>Create Multiplayer</span>
-            </Button>
-          </div>
-
-          {/* Join Room Form */}
-          <div className="pt-3 border-t border-slate-800/80 flex gap-2">
-            <input
-              type="text"
-              maxLength={6}
-              value={roomCodeInput}
-              onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
-              placeholder="ROOM CODE"
-              className="w-1/2 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-center font-mono font-bold tracking-widest text-slate-100 text-sm focus:outline-none focus:border-sky-500"
-            />
-            <Button
-              variant="secondary"
-              fullWidth
-              disabled={isLoading}
-              onClick={handleJoinRoom}
-            >
-              Join Room
-            </Button>
-          </div>
-        </div>
-
-        {/* Feature Highlights Chips */}
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="p-3 rounded-xl bg-slate-900/50 border border-slate-800/60">
-            <Zap className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-            <h4 className="text-xs font-bold text-slate-200">60Hz Physics</h4>
-            <p className="text-[10px] text-slate-400">Authoritative Ball</p>
-          </div>
-          <div className="p-3 rounded-xl bg-slate-900/50 border border-slate-800/60">
-            <Bot className="w-4 h-4 text-sky-400 mx-auto mb-1" />
-            <h4 className="text-xs font-bold text-slate-200">Dual Tactical AI</h4>
-            <p className="text-[10px] text-slate-400">LLM Strategies</p>
-          </div>
-          <div className="p-3 rounded-xl bg-slate-900/50 border border-slate-800/60">
-            <Users className="w-4 h-4 text-rose-400 mx-auto mb-1" />
-            <h4 className="text-xs font-bold text-slate-200">5v5 Arena</h4>
-            <p className="text-[10px] text-slate-400">Humans + Bots</p>
-          </div>
-        </div>
+            {errorMessage && <p className="error-message" role="alert">{errorMessage}</p>}
+            <Button size="lg" fullWidth disabled={loading || isConnecting} onClick={() => enter()}>{loading ? 'ENTERING ARENA…' : mode === 'solo' ? 'START TRAINING' : 'CREATE LOBBY'}<ArrowRight size={20} /></Button>
+            {isConnecting && <p className="connection-help" role="status">Connecting to the arena. Play unlocks when connected.</p>}
+            <div className="join-divider"><span /> GOT AN INVITE? <span /></div>
+            <form className="join-form" onSubmit={e => { e.preventDefault(); if (!loading && !isConnecting) void enter(true); }}><input aria-label="Six-character room code" maxLength={6} value={roomCodeInput} onChange={e => setRoomCodeInput(e.target.value.toUpperCase())} placeholder="ROOM CODE" /><Button type="submit" variant="secondary" disabled={loading || isConnecting}>JOIN<ChevronRight size={16} /></Button></form>
+          </> : <>
+            <div className="section-kicker"><span>02 / THE PLAYBOOK</span><Keyboard size={19} /></div><h2>MAKE EVERY<br />TOUCH COUNT.</h2><p className="muted">Outscore the opposition before the clock runs out. You control one player; your teammates move with you.</p><ControlGuide /><Button fullWidth onClick={() => setTab('play')}>READY TO PLAY<ArrowRight size={18} /></Button>
+          </>}
+        </section>
+        <section className="feature-strip" aria-label="Match features"><div><span className="feature-icon"><Users /></span><span><strong>BETTER AS A TEAM</strong><p>Up to four players. AI fills the squad.</p></span></div><div><span className="feature-icon"><Target /></span><span><strong>READ THE GAME</strong><p>Adaptive coaches. A new challenge every match.</p></span></div><div><span className="feature-icon"><Timer /></span><span><strong>STRAIGHT INTO THE ACTION</strong><p>Three minutes to leave it all on the pitch.</p></span></div></section>
       </main>
-
-      {/* Footer */}
-      <footer className="text-center text-xs text-slate-500 z-10">
-        Project Eleven: Agentic Football Arena &copy; 2026. Built with Three.js, React & Socket.IO.
-      </footer>
-    </div>
+    </GameShell>
   );
 };

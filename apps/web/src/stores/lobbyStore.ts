@@ -25,7 +25,7 @@ export const useLobbyStore = create<LobbyStoreState>((set) => ({
   currentRoom: null,
   selectedTeam: 'blue',
   isReady: false,
-  isConnecting: false,
+  isConnecting: true,
   errorMessage: null,
   setPlayerName: (playerName) => set({ playerName }),
   setRoomCodeInput: (roomCodeInput) => set({ roomCodeInput }),
@@ -38,7 +38,6 @@ export const useLobbyStore = create<LobbyStoreState>((set) => ({
     set({
       currentRoom: null,
       isReady: false,
-      isConnecting: false,
       errorMessage: null,
     }),
 }));

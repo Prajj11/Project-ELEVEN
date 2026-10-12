@@ -40,7 +40,7 @@ export const registerSocketHandlers = (io: Server, roomManager: RoomManager) => 
           validated.playerName
         );
         if (callback) {
-          callback(result);
+          callback({ success: result.success, roomId: result.room?.roomId, error: result.error });
         }
       } catch (err) {
         if (callback) {
