@@ -51,26 +51,47 @@ In traditional association football, 11 players make up a squad. In **Project El
 ## 🏗️ System Architecture
 
 ```mermaid
-graph TD
-    Client["Web Client (React / Three.js / R3F)"] <-->|Snapshots (25Hz) / Inputs (30Hz)| Server["Authoritative Server (Node.js / Express / Socket.IO)"]
-    
-    subgraph Server Match Engine [60Hz Fixed Simulation Loop]
-        Server --> Loop["FixedStepLoop (60Hz)"]
-        Loop --> Physics["PhysicsWorld (Ball & Player Kinematics)"]
-        Loop --> Spacing["Player Separation & Repulsion Physics"]
-        Loop --> Possession["Possession & Tackling System"]
-        Loop --> Referee["3D Referee Autonomous Movement"]
-        Loop --> Rules["GoalDetection & 180s Match Clock"]
-        Loop --> Layer2["Layer 2: Deterministic AI & Goalkeepers"]
-        Loop --> Layer3["Layer 3: Dual Tactical LLM Agents"]
+flowchart TD
+    Client["Web Client (React / Three.js / R3F)"]
+    Server["Authoritative Server (Node.js / Express / Socket.IO)"]
+
+    Client -->|"Inputs (30Hz)"| Server
+    Server -->|"Snapshots (25Hz)"| Client
+
+    subgraph MatchEngine ["Server Match Engine (60Hz Simulation Loop)"]
+        direction TB
+        Loop["FixedStepLoop (60Hz)"]
+        Physics["PhysicsWorld (Ball & Player Kinematics)"]
+        Spacing["Player Separation & Repulsion Physics"]
+        Possession["Possession & Tackling System"]
+        Referee["3D Referee Autonomous Movement"]
+        Rules["GoalDetection & 180s Match Clock"]
+        Layer2["Layer 2: Deterministic AI & Goalkeepers"]
+        Layer3["Layer 3: Dual Tactical LLM Agents"]
+
+        Loop --> Physics
+        Loop --> Spacing
+        Loop --> Possession
+        Loop --> Referee
+        Loop --> Rules
+        Loop --> Layer2
+        Loop --> Layer3
     end
-    
-    subgraph Layer 3 Tactical Intelligence
-        Layer3 --> BlueAgent["Blue Tactical Coach (Gemini / OpenAI / Heuristic)"]
-        Layer3 --> RedAgent["Red Tactical Coach (Gemini / OpenAI / Heuristic)"]
-        BlueAgent --> HUD["Live Tactical HUD Reasoning & Strategy"]
+
+    Server --> Loop
+
+    subgraph TacticalAI ["Layer 3 Tactical Intelligence"]
+        direction TB
+        BlueAgent["Blue Tactical Coach (Gemini / OpenAI / Heuristic)"]
+        RedAgent["Red Tactical Coach (Gemini / OpenAI / Heuristic)"]
+        HUD["Live Tactical HUD Reasoning & Strategy"]
+
+        BlueAgent --> HUD
         RedAgent --> HUD
     end
+
+    Layer3 --> BlueAgent
+    Layer3 --> RedAgent
 ```
 
 ---
