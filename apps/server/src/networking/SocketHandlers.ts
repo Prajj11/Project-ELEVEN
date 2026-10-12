@@ -89,6 +89,14 @@ export const registerSocketHandlers = (io: Server, roomManager: RoomManager) => 
       }
     });
 
+    // 6.1 Toggle Pause
+    socket.on(SOCKET_EVENTS.MATCH_TOGGLE_PAUSE, () => {
+      const room = roomManager.getRoomForSocket(socket.id);
+      if (room) {
+        room.togglePause();
+      }
+    });
+
     // 7. Input Update
     socket.on(SOCKET_EVENTS.INPUT_UPDATE, (data) => {
       try {

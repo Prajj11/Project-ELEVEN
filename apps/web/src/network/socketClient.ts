@@ -134,6 +134,10 @@ class SocketClient {
     this.socket?.emit(SOCKET_EVENTS.ROOM_START_MATCH);
   }
 
+  public togglePause() {
+    this.socket?.emit(SOCKET_EVENTS.MATCH_TOGGLE_PAUSE);
+  }
+
   public leaveRoom() {
     this.socket?.emit(SOCKET_EVENTS.ROOM_LEAVE);
     useLobbyStore.getState().reset();

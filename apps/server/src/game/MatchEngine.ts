@@ -132,8 +132,34 @@ export class MatchEngine {
     }
   }
 
+  public togglePause(): boolean {
+    if (this.state.phase === 'PLAYING') {
+      this.state.phase = 'PAUSED';
+      this.onEvent({
+        type: 'MATCH_EVENT',
+        description: 'Match paused.',
+        timestamp: Date.now(),
+      });
+      return true;
+    } else if (this.state.phase === 'PAUSED') {
+      this.state.phase = 'PLAYING';
+      this.onEvent({
+        type: 'MATCH_EVENT',
+        description: 'Match resumed.',
+        timestamp: Date.now(),
+      });
+      return false;
+    }
+    return false;
+  }
+
   private tick(dt: number) {
     this.state.tick += 1;
+
+    // If game is paused, skip physics and clock updates
+    if (this.state.phase === 'PAUSED') {
+      return;
+    }
 
     // 1. Process Human Player Inputs
     this.processHumanInputs(dt);
@@ -150,7 +176,10 @@ export class MatchEngine {
     // 5. Update Goalkeepers
     GoalkeeperSystem.update(this.state);
 
-    // 6. Check Goals
+    // 6. Resolve Player-to-Player Collisions (Prevents players from sticking or clipping)
+    PhysicsWorld.resolvePlayerCollisions(this.state.players);
+
+    // 7. Check Goals
     GoalDetection.checkAndHandleGoal(this.state, (scoringTeam, desc) => {
       this.stats[scoringTeam].goals += 1;
       this.onEvent({
@@ -160,7 +189,7 @@ export class MatchEngine {
       });
     });
 
-    // 7. Match Clock, Phases & Boundaries
+    // 8. Match Clock, Phases & Boundaries
     MatchRules.updateClockAndPhases(this.state, dt, () => {
       this.finishMatch();
     });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Pause, Play } from 'lucide-react';
 import { useMatchStore } from '../stores/matchStore';
 import { useLobbyStore } from '../stores/lobbyStore';
 import { socketClient } from '../network/socketClient';
@@ -21,12 +21,15 @@ export const MatchHUD: React.FC = () => {
   const stamina = controlledPlayer?.stamina ?? 100;
   const role = controlledPlayer?.role ?? 'FORWARD';
   const hasPossession = controlledPlayer?.hasPossession ?? false;
+  const isPaused = currentSnapshot?.phase === 'PAUSED';
 
-  // Listen to Escape key to toggle exit modal
+  // Listen to Escape key for exit modal, and P key for Pause/Resume
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
         setShowExitConfirm((prev) => !prev);
+      } else if (e.code === 'KeyP') {
+        socketClient.togglePause();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -39,6 +42,10 @@ export const MatchHUD: React.FC = () => {
     useLobbyStore.getState().reset();
   };
 
+  const handleTogglePause = () => {
+    socketClient.togglePause();
+  };
+
   return (
     <>
       <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 select-none z-10">
@@ -49,6 +56,19 @@ export const MatchHUD: React.FC = () => {
             <div className="px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-400 font-mono">
               ROLE: <span className="text-emerald-400 font-bold">{role}</span>
             </div>
+
+            {/* Pause / Resume Button */}
+            <button
+              onClick={handleTogglePause}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-150 active:scale-95 shadow-md ${
+                isPaused
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-emerald-950/40'
+                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-slate-700'
+              }`}
+            >
+              {isPaused ? <Play className="w-3.5 h-3.5 fill-white" /> : <Pause className="w-3.5 h-3.5" />}
+              <span>{isPaused ? 'Resume Match' : 'Pause'}</span>
+            </button>
 
             {/* Exit Match Button */}
             <button
@@ -67,8 +87,32 @@ export const MatchHUD: React.FC = () => {
           <TacticalPanel />
         </div>
 
+        {/* Big Match Paused Overlay Banner */}
+        {isPaused && (
+          <div className="self-center my-auto pointer-events-auto animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-10 py-6 rounded-3xl bg-slate-900/95 border-2 border-amber-500 shadow-2xl shadow-amber-500/20 backdrop-blur-xl text-center space-y-4">
+              <div className="flex items-center justify-center gap-2 text-amber-400">
+                <Pause className="w-8 h-8" />
+                <h1 className="text-3xl font-black tracking-widest uppercase">
+                  MATCH PAUSED
+                </h1>
+              </div>
+              <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                Simulation clock and player physics are frozen. Click resume to continue playing.
+              </p>
+              <button
+                onClick={handleTogglePause}
+                className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-emerald-950/50 border border-emerald-400 flex items-center gap-2 mx-auto transition-transform active:scale-95"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>RESUME MATCH</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Goal Celebration Overlay */}
-        {goalOverlayText && (
+        {goalOverlayText && !isPaused && (
           <div className="self-center my-auto animate-bounce pointer-events-none">
             <div className="px-10 py-5 rounded-3xl bg-emerald-600/95 border-2 border-emerald-400 shadow-2xl shadow-emerald-500/50 backdrop-blur-lg text-center">
               <h1 className="text-4xl font-black text-white tracking-widest uppercase drop-shadow-md">
@@ -143,6 +187,12 @@ export const MatchHUD: React.FC = () => {
                 Q
               </kbd>
               <span>Tackle</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-300">
+              <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-amber-400">
+                P
+              </kbd>
+              <span>Pause</span>
             </div>
             <div className="flex items-center gap-1.5 text-slate-300">
               <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400">

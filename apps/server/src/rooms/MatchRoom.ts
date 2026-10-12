@@ -156,6 +156,12 @@ export class MatchRoom {
     }
   }
 
+  public togglePause() {
+    if (this.engine) {
+      this.engine.togglePause();
+    }
+  }
+
   public broadcastRoomState() {
     const roomState: RoomState = {
       roomId: this.roomId,

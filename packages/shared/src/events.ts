@@ -15,6 +15,7 @@ export const SOCKET_EVENTS = {
   ROOM_SELECT_TEAM: 'room:select-team',
   ROOM_TOGGLE_READY: 'room:toggle-ready',
   ROOM_START_MATCH: 'room:start-match',
+  MATCH_TOGGLE_PAUSE: 'match:toggle-pause',
   INPUT_UPDATE: 'input:update',
   ACTION_PERFORM: 'action:perform',
   MATCH_REQUEST_RESYNC: 'match:request-resync',
@@ -42,6 +43,7 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.ROOM_SELECT_TEAM]: (payload: { teamId: TeamId }) => void;
   [SOCKET_EVENTS.ROOM_TOGGLE_READY]: () => void;
   [SOCKET_EVENTS.ROOM_START_MATCH]: () => void;
+  [SOCKET_EVENTS.MATCH_TOGGLE_PAUSE]: () => void;
   [SOCKET_EVENTS.INPUT_UPDATE]: (payload: PlayerInput) => void;
   [SOCKET_EVENTS.ACTION_PERFORM]: (payload: PlayerActionPayload) => void;
   [SOCKET_EVENTS.MATCH_REQUEST_RESYNC]: () => void;

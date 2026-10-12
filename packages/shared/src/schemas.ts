@@ -8,6 +8,7 @@ export const matchPhaseSchema = z.enum([
   'LOBBY',
   'KICKOFF',
   'PLAYING',
+  'PAUSED',
   'GOAL_PAUSE',
   'FINISHED',
   'CANCELLED',

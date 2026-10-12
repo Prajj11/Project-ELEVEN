@@ -56,4 +56,47 @@ export class PhysicsWorld {
       z: Math.max(-HALF_LENGTH + 2.0, Math.min(HALF_LENGTH - 2.0, pos.z * 0.8)),
     };
   }
+
+  public static resolvePlayerCollisions(players: Record<string, { position: Vec3 }>) {
+    const playerList = Object.values(players);
+    const minDistance = 1.0; // Minimum distance between any two players
+    const minDistanceSq = minDistance * minDistance;
+
+    for (let i = 0; i < playerList.length; i++) {
+      for (let j = i + 1; j < playerList.length; j++) {
+        const p1 = playerList[i];
+        const p2 = playerList[j];
+
+        const dx = p1.position.x - p2.position.x;
+        const dz = p1.position.z - p2.position.z;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < minDistanceSq) {
+          const dist = Math.sqrt(distSq);
+          let nx = 1;
+          let nz = 0;
+
+          if (dist > 0.001) {
+            nx = dx / dist;
+            nz = dz / dist;
+          } else {
+            // Exactly overlapping, push apart in arbitrary direction
+            const angle = Math.random() * Math.PI * 2;
+            nx = Math.cos(angle);
+            nz = Math.sin(angle);
+          }
+
+          const overlap = (minDistance - dist) * 0.5;
+
+          p1.position.x += nx * overlap;
+          p1.position.z += nz * overlap;
+          p2.position.x -= nx * overlap;
+          p2.position.z -= nz * overlap;
+
+          p1.position = this.clampPlayerPosition(p1.position);
+          p2.position = this.clampPlayerPosition(p2.position);
+        }
+      }
+    }
+  }
 }

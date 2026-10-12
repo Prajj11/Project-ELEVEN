@@ -6,6 +6,7 @@ export type MatchPhase =
   | 'LOBBY'
   | 'KICKOFF'
   | 'PLAYING'
+  | 'PAUSED'
   | 'GOAL_PAUSE'
   | 'FINISHED'
   | 'CANCELLED';
