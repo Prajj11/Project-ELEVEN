@@ -20,7 +20,10 @@ export const MatchHUD = () => {
   const { cameraMode, setCameraMode, showMinimap, toggleMinimap, showBallTracker, toggleBallTracker } = useSettingsStore();
   const [menu, setMenu] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
-  const closeMenu = () => { setMenu(false); setConfirmExit(false); };
+  const closeMenu = () => {
+    setMenu(false); setConfirmExit(false);
+    requestAnimationFrame(() => document.getElementById('match-pitch')?.focus({ preventScroll: true }));
+  };
   const player = snapshot?.players.find(p => p.id === assigned);
   const paused = snapshot?.phase === 'PAUSED';
   const stamina = Math.max(0, Math.min(100, player?.stamina ?? 100));

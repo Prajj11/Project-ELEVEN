@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PITCH_CONSTANTS } from '@project-eleven/shared';
 import { useMatchStore } from '../stores/matchStore';
@@ -21,6 +21,8 @@ const MatchControls = () => {
 };
 
 export const FootballScene: React.FC = () => {
+  const pitchRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { pitchRef.current?.focus({ preventScroll: true }); }, []);
   const marker = useRef<HTMLDivElement>(null);
   const showBallTracker = useSettingsStore(s => s.showBallTracker);
   const currentSnapshot = useMatchStore((s) => s.currentSnapshot);
@@ -40,7 +42,7 @@ export const FootballScene: React.FC = () => {
   );
 
   return (
-    <div className="w-full h-full relative bg-slate-950">
+    <div id="match-pitch" ref={pitchRef} tabIndex={0} role="region" aria-label="Football pitch. Use WASD to move and hold Space to shoot." onPointerDown={() => pitchRef.current?.focus({ preventScroll: true })} className="w-full h-full relative bg-slate-950">
       <Canvas
         shadows
         camera={{ position: [0, 14, 18], fov: 48 }}

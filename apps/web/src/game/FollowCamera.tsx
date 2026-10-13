@@ -15,7 +15,7 @@ export const FollowCamera: React.FC<FollowCameraProps> = ({
   ballPosition,
   teamSide = 'blue',
 }) => {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const cameraMode = useSettingsStore((s) => s.cameraMode);
   const currentTarget = useRef(new THREE.Vector3(0, 0, 0));
 
@@ -35,7 +35,10 @@ export const FollowCamera: React.FC<FollowCameraProps> = ({
 
     if (cameraMode === 'tactical') {
       // High tactical overview
-      const desiredPos = new THREE.Vector3(0, 26, teamSide === 'blue' ? 18 : -18);
+      // Fit both goals and touchlines, including narrow portrait viewports.
+      const aspect = size.width / Math.max(1, size.height);
+      const height = Math.max(76, 38 / aspect);
+      const desiredPos = new THREE.Vector3(0, height, teamSide === 'blue' ? 16 : -16);
       camera.position.lerp(desiredPos, 1 - Math.exp(-4 * delta));
       camera.lookAt(0, 0, 0);
     } else {
